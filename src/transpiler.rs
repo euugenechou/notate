@@ -1,9 +1,7 @@
 use crate::{chord::Chord, error::Error, result::Result};
-use path_macro::path;
 use std::{
     fs,
     io::{self, BufRead, Write},
-    iter,
     str::FromStr,
 };
 
@@ -32,26 +30,45 @@ impl<W: Write> Write for LineWriter<W> {
     }
 }
 
-pub struct Transpiler;
+pub struct Transpiler {
+    ly_dir: String,
+    svg_dir: String,
+}
 
 impl Transpiler {
-    pub fn generate_pdf<R, W>(reader: R, writer: W) -> Result<()>
+    pub fn new<P, Q>(ly_dir: P, svg_dir: Q) -> Self
+    where
+        P: AsRef<str>,
+        Q: AsRef<str>,
+    {
+        Self {
+            ly_dir: ly_dir.as_ref().into(),
+            svg_dir: svg_dir.as_ref().into(),
+        }
+    }
+
+    pub fn reset(&self) -> Result<()> {
+        let _ = fs::remove_dir_all(&self.ly_dir);
+        let _ = fs::remove_dir_all(&self.svg_dir);
+        fs::create_dir_all(&self.ly_dir)?;
+        fs::create_dir_all(&self.svg_dir)?;
+        Ok(())
+    }
+
+    pub fn generate_markdown<R, W>(&self, reader: R, writer: W) -> Result<()>
     where
         R: BufRead,
         W: Write,
     {
-        let mut pngs = 0;
-        let pngdir = "pngs";
-
-        // Recreate the PNG directory.
-        let _ = fs::remove_dir_all(pngdir);
-        fs::create_dir_all(pngdir)?;
+        let mut svgs = 0;
 
         let mut reader = reader
             .lines()
             .filter_map(|line| line.ok())
             .map(|line| line.to_owned());
         let mut writer = LineWriter::new(writer);
+
+        self.reset()?;
 
         while let Some(line) = reader.next() {
             // Blank line.
@@ -83,27 +100,39 @@ impl Transpiler {
             writer.writeln(lyrics.as_bytes())?;
             writer.writeln(b"```")?;
 
-            // Paths to the chord PNGs.
-            let paths = (0..chords.len())
-                .map(|n| path![pngdir / format!("{}.png", pngs + n)])
-                .collect::<Vec<_>>();
+            // Generate the Lilypond source and SVGs.
+            for (i, chord) in chords.iter().enumerate() {
+                let prefix = (svgs + i).to_string();
 
-            // Generate the PNGs.
-            for (chord, path) in iter::zip(chords.iter(), paths.iter()) {
-                chord.generate_png(path)?;
+                chord.generate_ly(&prefix)?;
+                chord.generate_svg(&prefix)?;
+
+                fs::rename(
+                    chord.ly_path(&prefix),
+                    format!("{}/{}", self.ly_dir, chord.ly_path(&prefix)),
+                )?;
+                fs::remove_file(chord.svg_path(&prefix))?;
+                fs::rename(
+                    chord.svg_clip_path(&prefix),
+                    format!("{}/{}", self.svg_dir, chord.svg_path(&prefix)),
+                )?;
             }
 
-            // Emit the PNGs inline.
+            // Emit the SVGs inline.
             writer.writeln(
-                paths
+                chords
                     .iter()
-                    .map(|path| format!("![]({})", path.to_str().unwrap()))
+                    .enumerate()
+                    .map(|(i, chord)| {
+                        let path = (svgs + i).to_string();
+                        format!("![]({}/{})", self.svg_dir, chord.svg_path(path))
+                    })
                     .collect::<Vec<_>>()
                     .join(" &nbsp; &nbsp; ")
                     .as_bytes(),
             )?;
 
-            pngs += paths.len();
+            svgs += chords.len();
         }
 
         Ok(())

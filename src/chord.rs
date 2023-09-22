@@ -2,7 +2,6 @@ use crate::{error::Error, result::Result};
 use regex::Regex;
 use std::{
     fs,
-    path::Path,
     process::{Command, Stdio},
     str::FromStr,
 };
@@ -28,27 +27,38 @@ impl Chord {
             r#"
 \score {{
     <<
-        \new ChordNames \chordmode {{ {} }}
+        \new ChordNames \with {{
+            \override ChordName.font-size = #-2
+        }} \chordmode {{ {} }}
         \new PianoStaff
         <<
-            \new Staff = "right" {{
+            \new Staff = "right" \with {{
+                fontSize = #-2
+                \override StaffSymbol.staff-space = #(magstep -2)
+                \once \override Staff.TimeSignature.stencil = ##f
+            }} {{
                 \clef "treble"
                 \relative c'
                 {{
-                    \once \override Staff.TimeSignature.stencil = ##f
                     {}
                 }}
             }}
-            \new Staff = "left" {{
+            \new Staff = "left" \with {{
+                fontSize = #-2
+                \override StaffSymbol.staff-space = #(magstep -2)
+                \once \override Staff.TimeSignature.stencil = ##f
+            }} {{
                 \clef "bass"
                 \relative c
                 {{
-                    \once \override Staff.TimeSignature.stencil = ##f
                     {}
                 }}
             }}
         >>
     >>
+    \paper {{
+        system-system-spacing = #'((basic-distance . 0.1) (padding . 0))
+    }}
     \layout {{
         clip-regions = #(list
             (cons
@@ -65,36 +75,49 @@ impl Chord {
         )
     }
 
-    pub fn generate_ly<P>(&self, path: P) -> Result<()>
+    pub fn ly_path<P>(&self, prefix: P) -> String
     where
-        P: AsRef<Path>,
+        P: AsRef<str>,
     {
-        fs::write(path, self.to_raw())?;
+        format!("{}.ly", prefix.as_ref())
+    }
+
+    pub fn svg_path<P>(&self, prefix: P) -> String
+    where
+        P: AsRef<str>,
+    {
+        format!("{}.svg", prefix.as_ref())
+    }
+
+    pub fn svg_clip_path<P>(&self, prefix: P) -> String
+    where
+        P: AsRef<str>,
+    {
+        format!("{}-from-1.0.1-to-1.1.4-clip.svg", prefix.as_ref())
+    }
+
+    pub fn generate_ly<P>(&self, prefix: P) -> Result<()>
+    where
+        P: AsRef<str>,
+    {
+        fs::write(self.ly_path(prefix), self.to_raw())?;
         Ok(())
     }
 
-    pub fn generate_png<P>(&self, path: P) -> Result<()>
+    pub fn generate_svg<P>(&self, prefix: P) -> Result<()>
     where
-        P: AsRef<Path>,
+        P: AsRef<str>,
     {
-        self.generate_ly("tmp.ly")?;
-
         Command::new("lilypond")
-            .arg("-dbackend=eps")
-            .arg("-dresolution=1200")
+            .arg("-dbackend=svg")
+            .arg("-dresolution=300")
             .arg("-dclip-systems")
-            .args(["--png", "tmp.ly"])
+            .args(["--svg", &self.ly_path(&prefix)])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
             .unwrap()
-            .wait()
-            .unwrap();
-
-        fs::remove_file("tmp.ly")?;
-        fs::remove_file("tmp.png")?;
-        fs::rename("tmp-from-1.0.1-to-1.1.4-clip.png", path)?;
-
+            .wait()?;
         Ok(())
     }
 }

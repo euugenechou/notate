@@ -1,10 +1,10 @@
 [package]
-name = "notation"
+name = "notate"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 anyhow = "1.0.75"
-path_macro = "1.0.0"
+clap = { version = "4.4.4", features = ["derive"] }
 regex = "1.9.5"
 thiserror = "1.0.48"
