@@ -1,7 +1,8 @@
 use crate::{chord::Chord, error::Error, result::Result};
 use std::{
-    fs,
-    io::{self, BufRead, Write},
+    fs::{self, File},
+    io::{self, BufRead, BufReader, BufWriter, Write},
+    path::Path,
     str::FromStr,
 };
 
@@ -30,21 +31,27 @@ impl<W: Write> Write for LineWriter<W> {
     }
 }
 
-pub struct Transpiler {
+pub struct Preprocessor {
     ly_dir: String,
     svg_dir: String,
 }
 
-impl Transpiler {
-    pub fn new<P, Q>(ly_dir: P, svg_dir: Q) -> Self
-    where
-        P: AsRef<str>,
-        Q: AsRef<str>,
-    {
+impl Preprocessor {
+    pub fn new() -> Self {
         Self {
-            ly_dir: ly_dir.as_ref().into(),
-            svg_dir: svg_dir.as_ref().into(),
+            ly_dir: "lys".into(),
+            svg_dir: "svgs".into(),
         }
+    }
+
+    pub fn set_ly_dir<P: AsRef<str>>(mut self, path: P) -> Self {
+        self.ly_dir = path.as_ref().into();
+        self
+    }
+
+    pub fn set_svg_dir<P: AsRef<str>>(mut self, path: P) -> Self {
+        self.svg_dir = path.as_ref().into();
+        self
     }
 
     pub fn reset(&self) -> Result<()> {
@@ -55,18 +62,19 @@ impl Transpiler {
         Ok(())
     }
 
-    pub fn generate_markdown<R, W>(&self, reader: R, writer: W) -> Result<()>
+    pub fn generate_markdown<P, Q>(&self, input: P, output: Q) -> Result<()>
     where
-        R: BufRead,
-        W: Write,
+        P: AsRef<Path>,
+        Q: AsRef<Path>,
     {
         let mut svgs = 0;
 
-        let mut reader = reader
+        let mut reader = BufReader::new(File::open(input)?)
             .lines()
             .filter_map(|line| line.ok())
             .map(|line| line.to_owned());
-        let mut writer = LineWriter::new(writer);
+
+        let mut writer = LineWriter::new(BufWriter::new(File::create(output)?));
 
         self.reset()?;
 
