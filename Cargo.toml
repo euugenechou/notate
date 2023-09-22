@@ -1,0 +1,10 @@
+[package]
+name = "notation"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.75"
+path_macro = "1.0.0"
+regex = "1.9.5"
+thiserror = "1.0.48"
