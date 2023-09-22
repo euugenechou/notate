@@ -16,7 +16,7 @@ cargo install --path ./notate
 See program help for usage.
 
 ```bash
-notate help
+notate --help
 ```
 
 ## Notes
