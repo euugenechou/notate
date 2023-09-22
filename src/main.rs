@@ -18,7 +18,7 @@ struct Args {
     svg_dir: String,
 
     /// Remove generated artifacts
-    #[arg(short, long, default_value = "svgs")]
+    #[arg(short, long, default_value_t = false)]
     remove_artifacts: bool,
 }
 

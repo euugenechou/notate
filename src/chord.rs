@@ -9,17 +9,17 @@ use std::{
 #[derive(Debug)]
 pub struct Chord {
     name: String,
-    right: Vec<String>,
     left: Vec<String>,
+    right: Vec<String>,
 }
 
 impl Chord {
-    fn right_to_raw(&self) -> String {
-        format!("<{}>", self.right.join(" "))
-    }
-
     fn left_to_raw(&self) -> String {
         format!("<{}>", self.left.join(" "))
+    }
+
+    fn right_to_raw(&self) -> String {
+        format!("<{}>", self.right.join(" "))
     }
 
     pub fn to_raw(&self) -> String {
@@ -126,16 +126,16 @@ impl FromStr for Chord {
     type Err = Error;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let re = Regex::new(r"\{(?<name>[^,]+),\s+(?<right>[^,]+),\s+(?<left>[^,]+)\}").unwrap();
+        let re = Regex::new(r"\{(?<name>[^,]+),\s+(?<left>[^,]+),\s+(?<right>[^,]+)\}").unwrap();
         let caps = re.captures(s).ok_or(Error::MalformedChord(s.into()))?;
 
         Ok(Self {
             name: caps["name"].into(),
-            right: caps["right"]
+            left: caps["left"]
                 .split_whitespace()
                 .map(|s| s.trim().to_owned())
                 .collect(),
-            left: caps["right"]
+            right: caps["right"]
                 .split_whitespace()
                 .map(|s| s.trim().to_owned())
                 .collect(),
