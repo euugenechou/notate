@@ -141,7 +141,7 @@ impl Transpiler {
 
 fn titlefy(line: &str) -> String {
     format!(
-        "# `{}`",
+        "# `# {}`",
         line.split_once(" ")
             .map(|(_, title)| title.to_owned())
             .unwrap()
@@ -149,10 +149,14 @@ fn titlefy(line: &str) -> String {
 }
 
 fn sectionify(line: &str) -> String {
-    format!("### `{}`", line.replace("[", "").replace("]", ""))
+    format!("### `## {}`", line.replace("[", "").replace("]", ""))
 }
 
 fn chordify(line: &str) -> Result<Vec<Chord>> {
+    if line.contains("skip") {
+        return Ok(vec![]);
+    }
+
     line.split("|")
         .map(|chord| Chord::from_str(chord.trim()))
         .into_iter()
