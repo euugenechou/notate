@@ -126,7 +126,8 @@ impl FromStr for Chord {
     type Err = Error;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let re = Regex::new(r"\{(?<name>[^,]+),\s+(?<left>[^,]+),\s+(?<right>[^,]+)\}").unwrap();
+        let re =
+            Regex::new(r"\{(?<name>[^;]+)\s*;\s*(?<left>[^;]+)\s*;\s*(?<right>[^;]+)\}").unwrap();
         let caps = re.captures(s).ok_or(Error::MalformedChord(s.into()))?;
 
         Ok(Self {
