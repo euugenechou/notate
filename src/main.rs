@@ -14,9 +14,9 @@ struct Args {
     #[arg(short, long, default_value = "svgs")]
     svg_dir: String,
 
-    /// Remove generated intermediate artifacts
+    /// Preserve generated intermediate artifacts
     #[arg(short, long, default_value_t = false)]
-    remove_artifacts: bool,
+    preserve_artifacts: bool,
 
     /// Name of generated Markdown file
     #[arg(short = 'm', long, default_value = "a.md")]
@@ -48,7 +48,7 @@ fn main() -> Result<()> {
         return Err(anyhow!("input must be a tab (.tab) or Markdown (.md)"));
     }
 
-    if args.remove_artifacts {
+    if !args.preserve_artifacts {
         let _ = fs::remove_dir_all(&args.ly_dir);
         let _ = fs::remove_dir_all(&args.svg_dir);
         let _ = fs::remove_file(&args.md_output);
