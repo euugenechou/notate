@@ -7,8 +7,7 @@ Compiles guitar tabs annotated with piano chords to PDF.
 Requires Lilypond and Pandoc.
 
 ```bash
-git clone https://github.com/euugenechou/notate.git
-cargo install --path ./notate
+cargo install --git https://github.com/euugenechou/notate.git
 ```
 
 ## Usage

@@ -22,7 +22,77 @@ impl Chord {
         format!("<{}>", self.right.join(" "))
     }
 
-    pub fn to_raw(&self) -> String {
+    fn to_lefthand_raw(&self) -> String {
+        format!(
+            r#"
+\score {{
+    <<
+        \new ChordNames \with {{
+            \override ChordName.font-size = #-2
+        }} \chordmode {{ {} }}
+        \new Staff = "left" \with {{
+            fontSize = #-2
+            \override StaffSymbol.staff-space = #(magstep -2)
+            \once \override Staff.TimeSignature.stencil = ##f
+        }} {{
+            \clef "bass"
+            \relative c
+            {{
+                {}
+            }}
+        }}
+    >>
+    \layout {{
+        clip-regions = #(list
+            (cons
+                (make-rhythmic-location 1 0 4)
+                (make-rhythmic-location 1 1 4)
+            )
+        )
+    }}
+}}
+    "#,
+            &self.name,
+            &self.left_to_raw(),
+        )
+    }
+
+    fn to_righthand_raw(&self) -> String {
+        format!(
+            r#"
+\score {{
+    <<
+        \new ChordNames \with {{
+            \override ChordName.font-size = #-2
+        }} \chordmode {{ {} }}
+        \new Staff = "right" \with {{
+            fontSize = #-2
+            \override StaffSymbol.staff-space = #(magstep -2)
+            \once \override Staff.TimeSignature.stencil = ##f
+        }} {{
+            \clef "treble"
+            \relative c'
+            {{
+                {}
+            }}
+        }}
+    >>
+    \layout {{
+        clip-regions = #(list
+            (cons
+                (make-rhythmic-location 1 0 4)
+                (make-rhythmic-location 1 1 4)
+            )
+        )
+    }}
+}}
+    "#,
+            &self.name,
+            &self.right_to_raw(),
+        )
+    }
+
+    pub fn to_twohand_raw(&self) -> String {
         format!(
             r#"
 \score {{
@@ -56,9 +126,6 @@ impl Chord {
             }}
         >>
     >>
-    \paper {{
-        system-system-spacing = #'((basic-distance . 0.1) (padding . 0))
-    }}
     \layout {{
         clip-regions = #(list
             (cons
@@ -73,6 +140,14 @@ impl Chord {
             &self.right_to_raw(),
             &self.left_to_raw()
         )
+    }
+
+    pub fn to_raw(&self) -> String {
+        match (self.left.len(), self.right.len()) {
+            (0, _) => self.to_righthand_raw(),
+            (_, 0) => self.to_lefthand_raw(),
+            _ => self.to_twohand_raw(),
+        }
     }
 
     pub fn ly_path<P>(&self, prefix: P) -> String
@@ -126,8 +201,8 @@ impl FromStr for Chord {
     type Err = Error;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let re =
-            Regex::new(r"\{(?<name>[^;]+)\s*;\s*(?<left>[^;]+)\s*;\s*(?<right>[^;]+)\}").unwrap();
+        let re = Regex::new(r"\{\s*(?<name>[^;]*)\s*;\s*(?<left>[^;]*)\s*;\s*(?<right>[^;]*)\s*\}")
+            .unwrap();
         let caps = re.captures(s).ok_or(Error::MalformedChord(s.into()))?;
 
         Ok(Self {
