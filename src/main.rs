@@ -37,10 +37,16 @@ fn main() -> Result<()> {
     let compiler = Compiler::new();
 
     if args.input.ends_with(".tab") {
+        let _ = fs::remove_dir_all(&args.ly_dir);
+        let _ = fs::remove_dir_all(&args.svg_dir);
+        fs::create_dir_all(&args.ly_dir)?;
+        fs::create_dir_all(&args.svg_dir)?;
+
         preprocessor
             .set_ly_dir(&args.ly_dir)
             .set_svg_dir(&args.svg_dir)
             .generate_markdown(&args.input, &args.md_output)?;
+
         compiler.generate_pdf(&args.md_output, &args.pdf_output)?;
     } else if args.input.ends_with(".md") {
         compiler.generate_pdf(&args.input, &args.pdf_output)?;
