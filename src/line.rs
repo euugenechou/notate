@@ -12,7 +12,7 @@ pub enum Line {
 }
 
 impl Line {
-    pub fn from_line(line: String) -> Self {
+    pub fn new(line: String) -> Self {
         if line.is_empty() {
             Self::Blank
         } else if line.starts_with("#") {
@@ -39,7 +39,7 @@ impl<R: BufRead> LineReader<R> {
     }
 
     pub fn read(&mut self) -> Option<Line> {
-        self.inner.find_map(|line| line.ok()).map(Line::from_line)
+        self.inner.find_map(|line| line.ok()).map(Line::new)
     }
 
     pub fn peek(&mut self) -> Option<Line> {
@@ -48,7 +48,7 @@ impl<R: BufRead> LineReader<R> {
             .iter()
             .find_map(|line| line.as_ref().ok())
             .map(|line| line.clone())
-            .map(Line::from_line)
+            .map(Line::new)
     }
 }
 

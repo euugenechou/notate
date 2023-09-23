@@ -31,27 +31,49 @@ struct Args {
     input: String,
 }
 
+enum InputType {
+    Tab,
+    Markdown,
+    Invalid,
+}
+
+impl InputType {
+    fn new(input: &str) -> Self {
+        if input.ends_with(".tab") {
+            Self::Tab
+        } else if input.ends_with(".md") {
+            Self::Markdown
+        } else {
+            Self::Invalid
+        }
+    }
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
     let preprocessor = Preprocessor::new();
     let compiler = Compiler::new();
 
-    if args.input.ends_with(".tab") {
-        let _ = fs::remove_dir_all(&args.ly_dir);
-        let _ = fs::remove_dir_all(&args.svg_dir);
-        fs::create_dir_all(&args.ly_dir)?;
-        fs::create_dir_all(&args.svg_dir)?;
+    match InputType::new(&args.input) {
+        InputType::Tab => {
+            let _ = fs::remove_dir_all(&args.ly_dir);
+            let _ = fs::remove_dir_all(&args.svg_dir);
+            fs::create_dir_all(&args.ly_dir)?;
+            fs::create_dir_all(&args.svg_dir)?;
 
-        preprocessor
-            .set_ly_dir(&args.ly_dir)
-            .set_svg_dir(&args.svg_dir)
-            .generate_markdown(&args.input, &args.md_output)?;
+            preprocessor
+                .set_ly_dir(&args.ly_dir)
+                .set_svg_dir(&args.svg_dir)
+                .generate_markdown(&args.input, &args.md_output)?;
 
-        compiler.generate_pdf(&args.md_output, &args.pdf_output)?;
-    } else if args.input.ends_with(".md") {
-        compiler.generate_pdf(&args.input, &args.pdf_output)?;
-    } else {
-        return Err(anyhow!("input must be a tab (.tab) or Markdown (.md)"));
+            compiler.generate_pdf(&args.md_output, &args.pdf_output)?;
+        }
+        InputType::Markdown => {
+            compiler.generate_pdf(&args.input, &args.pdf_output)?;
+        }
+        InputType::Invalid => {
+            return Err(anyhow!("input must be a tab (.tab) or Markdown (.md)"));
+        }
     }
 
     if !args.preserve_artifacts {
