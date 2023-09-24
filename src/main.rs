@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use notate::{compiler::Compiler, preprocessor::Preprocessor};
-use std::fs;
+use std::{fs, path::PathBuf};
 
 /// Compiles basic guitar tabs annotated with piano chords to PDF.
 #[derive(Parser)]
@@ -15,16 +15,16 @@ struct Args {
     svg_dir: String,
 
     /// Preserve generated intermediate artifacts
-    #[arg(short, long, default_value_t = false)]
+    #[arg(short, long)]
     preserve_artifacts: bool,
 
-    /// Name of generated Markdown file
-    #[arg(short = 'm', long, default_value = "a.md")]
-    md_output: String,
+    /// Name of generated Markdown file [default: file name of tab]
+    #[arg(short = 'm', long)]
+    md_output: Option<String>,
 
-    /// Name of generated PDF
-    #[arg(short = 'o', long, default_value = "a.pdf")]
-    pdf_output: String,
+    /// Name of generated PDF file [default: file name of Markdown file]
+    #[arg(short = 'o', long)]
+    pdf_output: Option<String>,
 
     /// Tab (.tab) or Markdown (.md) file to process
     #[arg()]
@@ -61,25 +61,44 @@ fn main() -> Result<()> {
             fs::create_dir_all(&args.ly_dir)?;
             fs::create_dir_all(&args.svg_dir)?;
 
+            let name = PathBuf::from(&args.input)
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_owned();
+
+            let md_output = args.md_output.unwrap_or(format!("{name}.md"));
+            let pdf_output = args.pdf_output.unwrap_or(format!("{name}.pdf"));
+
             preprocessor
                 .set_ly_dir(&args.ly_dir)
                 .set_svg_dir(&args.svg_dir)
-                .generate_markdown(&args.input, &args.md_output)?;
+                .generate_markdown(&args.input, &md_output)?;
 
-            compiler.generate_pdf(&args.md_output, &args.pdf_output)?;
+            compiler.generate_pdf(&md_output, &pdf_output)?;
+
+            if !args.preserve_artifacts {
+                let _ = fs::remove_dir_all(&args.ly_dir);
+                let _ = fs::remove_dir_all(&args.svg_dir);
+                let _ = fs::remove_file(&md_output);
+            }
         }
         InputType::Markdown => {
-            compiler.generate_pdf(&args.input, &args.pdf_output)?;
+            let name = PathBuf::from(&args.input)
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_owned();
+
+            let pdf_output = args.pdf_output.unwrap_or(format!("{name}.pdf"));
+
+            compiler.generate_pdf(&args.input, &pdf_output)?;
         }
         InputType::Invalid => {
             return Err(anyhow!("input must be a tab (.tab) or Markdown (.md)"));
         }
-    }
-
-    if !args.preserve_artifacts {
-        let _ = fs::remove_dir_all(&args.ly_dir);
-        let _ = fs::remove_dir_all(&args.svg_dir);
-        let _ = fs::remove_file(&args.md_output);
     }
 
     Ok(())
